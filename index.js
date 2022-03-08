@@ -23,7 +23,7 @@ const getDirResult = async (readPath) => {
     return resDir;
 }
 
-const convertImages = async(readPath, heightPx, widthPx) => {
+const convertImages = async(readPath, heightPx, widthPx, outFormat) => {
     try {        
         const oriFiles = await readdir(readPath);
         const files = [];
@@ -33,6 +33,7 @@ const convertImages = async(readPath, heightPx, widthPx) => {
             }
         }
         if (files.length > 0) {
+            const fileExt = outFormat === '2' ? '.jpg' : '.webp';
             const resDir = await getDirResult(readPath);            
             const normalDir = resDir + 'normal/';
             const smallDir = resDir + 'small/';
@@ -40,11 +41,19 @@ const convertImages = async(readPath, heightPx, widthPx) => {
             await mkdir(smallDir);            
             for (let i = 0; i < files.length; i++  ) {
                 const file = files[i];
-                const newFilename = file.substring(0, file.length - 4) + '.webp';
+                const newFilename = file.substring(0, file.length - 4) + fileExt;
                 logUpdate('Processing: ' + ((i+1) *2 -1).toString() + '/' + (files.length *2));                
-                await sharp(readPath + '/' + file).webp({quality: 100}).toFile(normalDir + newFilename);                
+                if (fileExt === '.webp') {
+                    await sharp(readPath + '/' + file).webp({quality: 100}).toFile(normalDir + newFilename);                
+                } else {
+                    await sharp(readPath + '/' + file).flatten({background: '#FFFFFF'}).jpeg({quality: 100}).toFile(normalDir + newFilename);                                    
+                }                
                 logUpdate('Processing: ' + ((i+1) *2).toString() + '/' + (files.length *2));                
-                await sharp(readPath + '/' + file).webp({quality: 100}).resize(widthPx > 0 ? widthPx : null, heightPx > 0 ? heightPx : null).toFile(smallDir + newFilename);                
+                if (fileExt === '.webp') {
+                    await sharp(readPath + '/' + file).webp({quality: 100}).resize(widthPx > 0 ? widthPx : null, heightPx > 0 ? heightPx : null).toFile(smallDir + newFilename);                
+                } else {
+                    await sharp(readPath + '/' + file).flatten({background: '#FFFFFF'}).jpeg({quality: 100}).resize(widthPx > 0 ? widthPx : null, heightPx > 0 ? heightPx : null).toFile(smallDir + newFilename);                
+                }                                
             }            
             console.log(' ');
             console.log(' ');
@@ -79,28 +88,32 @@ console.log(' ');
 console.log(' ');
 rl.question(`Inform the directory (default '${cwd()}'): `, (dir) => {
     const dirApply = dir || cwd();        
-    rl.question('Height (in pixels) (default: unset): ', (inputHeight) =>  {
-        const heightPx = parseInt(inputHeight) || 0;
-        rl.question('Width (in pixels) (default: unset): ', (inputWidth) =>  {
-            const widthPx = parseInt(inputWidth) || 0;
-            if (!heightPx && !widthPx) {
-                console.log('At least one of measures must be provided!');
-                rl.close();
-            } else {
-                console.log(`Path: ${dirApply}`);
-                console.log(`Height: ${heightPx ? heightPx : 'unset'}`);
-                console.log(`Width: ${widthPx ? widthPx : 'unset'}`);
-                rl.question('Proceed (Yes)?', (rep) => {
-                    const repStr = (rep || 'y').toLowerCase();        
-                    if (repStr === 'y' || repStr === 'yes') {
-                        convertImages(dirApply, heightPx, widthPx).then(() => rl.close());
-                    } else {
-                        rl.close();
-                    }        
-                } );
-            }
-        });    
-    });    
+    rl.question('Inform the output format: \n1.webp \n2.jpeg \n(default 1.webp): ', (outFormat) =>  {
+        const outputFormat = (outFormat === '1' || outFormat === '2') ? outFormat : '1';
+        rl.question('Height (in pixels) (default: unset): ', (inputHeight) =>  {
+            const heightPx = parseInt(inputHeight) || 0;
+            rl.question('Width (in pixels) (default: unset): ', (inputWidth) =>  {
+                const widthPx = parseInt(inputWidth) || 0;            
+                if (!heightPx && !widthPx) {
+                    console.log('At least one of measures must be provided!');
+                    rl.close();
+                } else {
+                    console.log(`Path: ${dirApply}`);
+                    console.log(`Format: ${outputFormat === '1' ? 'webp' : 'jpeg'}`);                    
+                    console.log(`Height: ${heightPx ? heightPx : 'unset'}`);
+                    console.log(`Width: ${widthPx ? widthPx : 'unset'}`);
+                    rl.question('Proceed (Yes)?', (rep) => {
+                        const repStr = (rep || 'y').toLowerCase();        
+                        if (repStr === 'y' || repStr === 'yes') {
+                            convertImages(dirApply, heightPx, widthPx, outputFormat).then(() => rl.close());
+                        } else {
+                            rl.close();
+                        }        
+                    } );
+                }
+            });    
+         });    
+    })    
 });
 
 
