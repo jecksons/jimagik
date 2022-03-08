@@ -1,2 +1,2 @@
 # jimagik
-Tool to convert PNG files into WEBP files and resize them.
+Tool to convert PNG files into WEBP/JPEG files and resize them.
